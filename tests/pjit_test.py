@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import re
 from functools import partial
 import logging
 import threading
@@ -642,6 +643,37 @@ class PJitErrorTest(jtu.JaxTestCase):
              r"at the call site?")
     with self.assertRaisesRegex(RuntimeError, error):
       pjit(lambda x: x, in_axis_resources=None, out_axis_resources=None)(jnp.arange(4))
+
+  @jtu.with_mesh([('x', 2)])
+  def testAxisResourcesMismatch(self):
+    x = jnp.ones([])
+    p = [None, None, None]
+    pjit(lambda x: x, (p,), p)([x, x, x])  # OK
+    pjit(lambda x: x, [p], p)([x, x, x])  # OK
+    error = re.escape(
+        r"pjit in_axis_resources specification must be a tree prefix of the "
+        r"corresponding value, got specification (None, None, None) for value "
+        r"tree PyTreeDef((*, *)). Note that pjit in_axis_resources that are "
+        r"non-trivial pytrees should always be wrapped in a tuple representing "
+        r"the argument list.")
+    with self.assertRaisesRegex(ValueError, error):
+      pjit(lambda x, y: x, p, p)(x, x)  # Error, but make sure we hint at tupling
+    error = re.escape(
+        r"pjit in_axis_resources specification must be a tree prefix of the "
+        r"corresponding value, got specification (None, None, None) for value "
+        r"tree PyTreeDef(([*, *, *],)). Note that pjit in_axis_resources that "
+        r"are non-trivial pytrees should always be wrapped in a tuple representing "
+        r"the argument list. In particular, you're passing in a single argument "
+        r"which means that pjit in_axis_resources might need to be wrapped in a "
+        r"singleton tuple.")
+    with self.assertRaisesRegex(ValueError, error):
+      pjit(lambda x: x, p, p)([x, x, x])  # Error, but make sure we hint at singleton tuple
+    error = re.escape(
+        r"pjit out_axis_resources specification must be a tree prefix of the "
+        r"corresponding value, got specification [[None, None, None], None] for "
+        r"value tree PyTreeDef([*, *, *]).")
+    with self.assertRaisesRegex(ValueError, error):
+      pjit(lambda x: x, (p,), [p, None])([x, x, x])  # Error, we raise a generic tree mismatch message
 
 
 if __name__ == '__main__':

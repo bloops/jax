@@ -1273,6 +1273,36 @@ class XMapErrorTest(jtu.JaxTestCase):
     with self.assertRaisesRegex(RuntimeError, error):
       fm(x)
 
+  def testAxesMismatch(self):
+    x = jnp.ones((4,))
+    p = [['x'], ['x'], ['x']]
+    xmap(lambda x: x, (p,), p)([x, x, x])  # OK
+    xmap(lambda x: x, [p], p)([x, x, x])  # OK
+    error = re.escape(
+        r"xmap in_axes specification must be a tree prefix of the "
+        r"corresponding value, got specification (['x'], ['x'], ['x']) for value "
+        r"tree PyTreeDef((*, *)). Note that xmap in_axes that are "
+        r"non-trivial pytrees should always be wrapped in a tuple representing "
+        r"the argument list.")
+    with self.assertRaisesRegex(ValueError, error):
+      xmap(lambda x, y: x, p, p)(x, x)  # Error, but make sure we hint at tupling
+    error = re.escape(
+        r"xmap in_axes specification must be a tree prefix of the "
+        r"corresponding value, got specification (['x'], ['x'], ['x']) for value "
+        r"tree PyTreeDef(([*, *, *],)). Note that xmap in_axes that "
+        r"are non-trivial pytrees should always be wrapped in a tuple representing "
+        r"the argument list. In particular, you're passing in a single argument "
+        r"which means that xmap in_axes might need to be wrapped in a "
+        r"singleton tuple.")
+    with self.assertRaisesRegex(ValueError, error):
+      xmap(lambda x: x, p, p)([x, x, x])  # Error, but make sure we hint at singleton tuple
+    error = re.escape(
+        r"xmap out_axes specification must be a tree prefix of the "
+        r"corresponding value, got specification [[['x'], ['x'], ['x']], ['x']] for "
+        r"value tree PyTreeDef([*, *, *]).")
+    with self.assertRaisesRegex(ValueError, error):
+      xmap(lambda x: x, (p,), [p, ['x']])([x, x, x])  # Error, we raise a generic tree mismatch message
+
 
 class NamedAutodiffTests(jtu.JaxTestCase):
 
