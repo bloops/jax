@@ -57,7 +57,7 @@ def psum(x, axis_name, *, axis_index_groups=None):
     axis_index_groups: optional list of lists containing axis indices (e.g. for
       an axis of size 4, [[0, 1], [2, 3]] would perform psums over the first
       two and last two replicas). Groups must cover all axis indices exactly
-      once, and all groups must be the same size.
+      once.
 
 
   Returns:
@@ -99,7 +99,7 @@ def pmean(x, axis_name, *, axis_index_groups=None):
     axis_index_groups: optional list of lists containing axis indices (e.g. for
       an axis of size 4, [[0, 1], [2, 3]] would perform pmeans over the first
       two and last two replicas). Groups must cover all axis indices exactly
-      once, and all groups must be the same size.
+      once.
 
   Returns:
     Array(s) with the same shape as ``x`` representing the result of an
@@ -132,7 +132,7 @@ def pmax(x, axis_name, *, axis_index_groups=None):
     axis_index_groups: optional list of lists containing axis indices (e.g. for
       an axis of size 4, [[0, 1], [2, 3]] would perform pmaxes over the first
       two and last two replicas). Groups must cover all axis indices exactly
-      once, and all groups must be the same size.
+      once.
 
   Returns:
     Array(s) with the same shape as ``x`` representing the result of an
@@ -161,7 +161,7 @@ def pmin(x, axis_name, *, axis_index_groups=None):
     axis_index_groups: optional list of lists containing axis indices (e.g. for
       an axis of size 4, [[0, 1], [2, 3]] would perform pmins over the first
       two and last two replicas). Groups must cover all axis indices exactly
-      once, and all groups must be the same size.
+      once.
 
   Returns:
     Array(s) with the same shape as ``x`` representing the result of an
@@ -197,10 +197,7 @@ def _axis_index_of_val(x, val, axis_name):
 def _validate_axis_index_groups(axis_index_groups):
   if axis_index_groups is None:
     return
-  len_0 = len(axis_index_groups[0])
-  if any(len(g) != len_0 for g in axis_index_groups):
-    raise ValueError("axis_index_groups must all be the same size")
-  axis_space = range(len_0 * len(axis_index_groups))
+  axis_space = range(sum(len(group) for group in axis_index_groups))
   if {i for g in axis_index_groups for i in g} != set(axis_space):
     raise ValueError("axis_index_groups must cover all indices exactly once")
 
